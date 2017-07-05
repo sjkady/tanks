@@ -17,98 +17,98 @@ var server = app.listen(process.env.PORT || 8082, function () {
 var io = require('socket.io')(server);
 
 function GameServer(){
-	this.tanks = [];
-	this.balls = [];
-	this.lastBallId = 0;
+	this.players = [];
+	this.Bullets = [];
+	this.lastbulletid = 0;
 }
 
 GameServer.prototype = {
 
-	addTank: function(tank){
-		this.tanks.push(tank);
+	addpPlayer: function(player){
+		this.player.push(player);
 	},
 
-	addBall: function(ball){
-		this.balls.push(ball);
+	addbullet: function(bullet){
+		this.bullets.push(bullet);
 	},
 
-	removeTank: function(tankId){
-		//Remove tank object
-		this.tanks = this.tanks.filter( function(t){return t.id != tankId} );
+	removePlayer: function(playerId){
+		//Remove player object
+		this.players = this.players.filter( function(t){return t.id != playerId} );
 	},
 
-	//Sync tank with new data received from a client
-	syncTank: function(newTankData){
-		this.tanks.forEach( function(tank){
-			if(tank.id == newTankData.id){
-				tank.x = newTankData.x;
-				tank.y = newTankData.y;
-				tank.baseAngle = newTankData.baseAngle;
-				tank.cannonAngle = newTankData.cannonAngle;
+	//Sync player with new data received from a client
+	syncPlayer: function(newPlayerData){
+		this.players.forEach( function(player){
+			if(player.id == newPlayerData.id){
+				player.x = newPlayerData.x;
+				player.y = newPlayerData.y;
+				player.baseAngle = newPlayerData.baseAngle;
+				player.cannonAngle = newPlayerData.cannonAngle;
 			}
 		});
 	},
 
-	//The app has absolute control of the balls and their movement
-	syncBalls: function(){
+	//The app has absolute control of the bullets and their movement
+	syncBullets: function(){
 		var self = this;
-		//Detect when ball is out of bounds
-		this.balls.forEach( function(ball){
-			self.detectCollision(ball);
+		//Detect when bullet is out of bounds
+		this.bullets.forEach( function(bullet){
+			self.detectCollision(bullet);
 
-			if(ball.x < 0 || ball.x > WIDTH
-				|| ball.y < 0 || ball.y > HEIGHT){
-				ball.out = true;
+			if(bullet.x < 0 || bullet.x > WIDTH
+				|| bullet.y < 0 || bullet.y > HEIGHT){
+				bullet.out = true;
 			}else{
-				ball.fly();
+				bullet.fly();
 			}
 		});
 	},
 
-	//Detect if ball collides with any tank
-	detectCollision: function(ball){
+	//Detect if bullet collides with any player
+	detectCollision: function(bullet){
 		var self = this;
 
-		this.tanks.forEach( function(tank){
-			if(tank.id != ball.ownerId
-				&& Math.abs(tank.x - ball.x) < 30
-				&& Math.abs(tank.y - ball.y) < 30){
-				//Hit tank
-				self.hurtTank(tank);
-				ball.out = true;
-				ball.exploding = true;
+		this.players.forEach( function(player){
+			if(player.id != bullet.ownerId
+				&& Math.abs(player.x - bullet.x) < 30
+				&& Math.abs(player.y - bullet.y) < 30){
+				//Hit player
+				self.hurtPlayer(player);
+				bullet.out = true;
+				bullet.exploding = true;
 			}
 		});
 	},
 
-	hurtTank: function(tank){
-		tank.hp -= 2;
+	hurtPlayer: function(player){
+		player.hp -= 2;
 	},
 
 	getData: function(){
 		var gameData = {};
-		gameData.tanks = this.tanks;
-		gameData.balls = this.balls;
+		gameData.players = this.players;
+		gameData.bullets = this.bullets;
 
 		return gameData;
 	},
 
-	cleanDeadTanks: function(){
-		this.tanks = this.tanks.filter(function(t){
+	cleanDeadPlayers: function(){
+		this.players = this.players.filter(function(t){
 			return t.hp > 0;
 		});
 	},
 
-	cleanDeadBalls: function(){
-		this.balls = this.balls.filter(function(ball){
-			return !ball.out;
+	cleanDeadBullets: function(){
+		this.bullets = this.bullets.filter(function(bullet){
+			return !bullet.out;
 		});
 	},
 
-	increaseLastBallId: function(){
-		this.lastBallId ++;
-		if(this.lastBallId > 1000){
-			this.lastBallId = 0;
+	increaseLastBulletId: function(){
+		this.lastBulletId ++;
+		if(this.lastBulletId > 1000){
+			this.lastBulletId = 0;
 		}
 	}
 
@@ -121,50 +121,50 @@ var game = new GameServer();
 io.on('connection', function(client) {
 	console.log('User connected');
 
-	client.on('joinGame', function(tank){
-		console.log(tank.id + ' joined the game');
+	client.on('joinGame', function(player){
+		console.log(player.id + ' joined the game');
 		var initX = getRandomInt(40, 900);
 		var initY = getRandomInt(40, 500);
-		client.emit('addTank', { id: tank.id, type: tank.type, isLocal: true, x: initX, y: initY, hp: TANK_INIT_HP });
-		client.broadcast.emit('addTank', { id: tank.id, type: tank.type, isLocal: false, x: initX, y: initY, hp: TANK_INIT_HP} );
+		client.emit('addPlayer', { id: player.id, type: player.type, isLocal: true, x: initX, y: initY, hp: TANK_INIT_HP });
+		client.broadcast.emit('addPlayer', { id: player.id, type: player.type, isLocal: false, x: initX, y: initY, hp: TANK_INIT_HP} );
 
-		game.addTank({ id: tank.id, type: tank.type, hp: TANK_INIT_HP});
+		game.addPlayer({ id: player.id, type: player.type, hp: TANK_INIT_HP});
 	});
 
 	client.on('sync', function(data){
 		//Receive data from clients
-		if(data.tank != undefined){
-			game.syncTank(data.tank);
+		if(data.player != undefined){
+			game.syncPlayer(data.player);
 		}
-		//update ball positions
-		game.syncBalls();
+		//update bullet positions
+		game.syncBullets();
 		//Broadcast data to clients
 		client.emit('sync', game.getData());
 		client.broadcast.emit('sync', game.getData());
 
 		//I do the cleanup after sending data, so the clients know
-		//when the tank dies and when the balls explode
-		game.cleanDeadTanks();
-		game.cleanDeadBalls();
+		//when the player dies and when the bullets explode
+		game.cleanDeadPlayers();
+		game.cleanDeadBullets();
 		counter ++;
 	});
 
-	client.on('shoot', function(ball){
-		var ball = new Ball(ball.ownerId, ball.alpha, ball.x, ball.y );
-		game.addBall(ball);
+	client.on('shoot', function(bullet){
+		var bullet = new Bullet(bullet.ownerId, bullet.alpha, bullet.x, bullet.y );
+		game.addBullet(bullet);
 	});
 
-	client.on('leaveGame', function(tankId){
-		console.log(tankId + ' has left the game');
-		game.removeTank(tankId);
-		client.broadcast.emit('removeTank', tankId);
+	client.on('leaveGame', function(playerId){
+		console.log(playerId + ' has left the game');
+		game.removePlayer(playerId);
+		client.broadcast.emit('removePlayer', playerId);
 	});
 
 });
 
-function Ball(ownerId, alpha, x, y){
-	this.id = game.lastBallId;
-	game.increaseLastBallId();
+function Bullet(ownerId, alpha, x, y){
+	this.id = game.lastBulletId;
+	game.increaseLastBulletId();
 	this.ownerId = ownerId;
 	this.alpha = alpha; //angle of shot in radians
 	this.x = x;
@@ -172,7 +172,7 @@ function Ball(ownerId, alpha, x, y){
 	this.out = false;
 };
 
-Ball.prototype = {
+Bullet.prototype = {
 
 	fly: function(){
 		//move to trayectory

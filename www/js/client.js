@@ -1,57 +1,57 @@
 var WIDTH = 1100;
 var HEIGHT = 580;
 // This IP is hardcoded to my server, replace with your own
-var socket = io.connect('https://rubentd-tanks.herokuapp.com');
+var socket = io.connect('https://bramblestest.herokuapp.com/');
 var game = new Game('#arena', WIDTH, HEIGHT, socket);
-var selectedTank = 1;
-var tankName = '';
+var selectedPlayer = 1;
+var playerName = '';
 
-socket.on('addTank', function(tank){
-	game.addTank(tank.id, tank.type, tank.isLocal, tank.x, tank.y);
+socket.on('addPlayer', function(player){
+	game.addPlayer(player.id, player.type, player.isLocal, player.x, player.y);
 });
 
 socket.on('sync', function(gameServerData){
 	game.receiveData(gameServerData);
 });
 
-socket.on('killTank', function(tankData){
-	game.killTank(tankData);
+socket.on('killPlayer', function(playerData){
+	game.killPlayer(playerData);
 });
 
-socket.on('removeTank', function(tankId){
-	game.removeTank(tankId);
+socket.on('removePlayer', function(playerId){
+	game.removePlayer(playerId);
 });
 
 $(document).ready( function(){
 
 	$('#join').click( function(){
-		tankName = $('#tank-name').val();
-		joinGame(tankName, selectedTank, socket);
+		playerName = $('#player-name').val();
+		joinGame(playerName, selectedPlayer, socket);
 	});
 
-	$('#tank-name').keyup( function(e){
-		tankName = $('#tank-name').val();
+	$('#player-name').keyup( function(e){
+		playerName = $('#player-name').val();
 		var k = e.keyCode || e.which;
 		if(k == 13){
-			joinGame(tankName, selectedTank, socket);
+			joinGame(playerName, selectedPlayer, socket);
 		}
 	});
 
-	$('ul.tank-selection li').click( function(){
-		$('.tank-selection li').removeClass('selected')
+	$('ul.player-selection li').click( function(){
+		$('.player-selection li').removeClass('selected')
 		$(this).addClass('selected');
-		selectedTank = $(this).data('tank');
+		selectedPlayer = $(this).data('player');
 	});
 
 });
 
 $(window).on('beforeunload', function(){
-	socket.emit('leaveGame', tankName);
+	socket.emit('leaveGame', playerName);
 });
 
-function joinGame(tankName, tankType, socket){
-	if(tankName != ''){
+function joinGame(playerName, playerType, socket){
+	if(playerName != ''){
 		$('#prompt').hide();
-		socket.emit('joinGame', {id: tankName, type: tankType});
+		socket.emit('joinGame', {id: playerName, type: playerType});
 	}
 }
